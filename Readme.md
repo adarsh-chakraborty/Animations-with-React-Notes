@@ -205,5 +205,286 @@ If a component has to be unmounted && we're animating suppose changing opacity o
 
 So, the element won't be unmounted until the animation has finished.
 
+## Animation Timings
 
+What if we want to setup different timings for different states, like for Entering, Exiting etc.
+
+For that, we can send an object with two keys, `enter` and `exit` and pass it to `timeout` prop in Transition.
+
+```javascript
+const animationTimings = {
+    enter: 400,
+    exit: 1000,
+}
+
+<Transition timeout={animationTimings}>
+<p>Hello</p>
+</Transition>
+```
+
+Also note, the css timings should be same as well for this to work.
+
+## Transition Events
+
+Sometimes, we might want to execute some code when certain state changes in the Transition, not just render some JSX, for that we got various callbacks.
+
+We have 6 different events we can listen to, on a Transition component.
+
+These will be executed as the following order.
+
+- `onEnter={() => {}}`
+- `onEntering={() => {}}`
+- `onEntered={() => {}}`
+- `onExit={() => {}}`
+- `onExiting={() => {}}`
+- `onExited={() => {}}`
+
+We can bound a function to these events, which will be executed in the respective order as shown above.
+
+```javascript
+<Transition 
+in={state.show}
+timeout={animationTimings}
+mountOnEnter
+unmountOnExit
+onEnter={() => console.log('onEnter')}
+onEntering={() => console.log('onEntering')}
+onEntered={() => console.log('onEntered')}
+onExit={() => console.log('onExit')}
+onExiting={() => console.log('onExiting')}
+onExited={() => console.log('onExited')}
+>
+{state => <p>My JSX Code to Render hehe</p>}
+</Transition>
+```
+
+## CSS Transition Component
+
+Till now, we are manually checking the state of animation and based on the state we are attaching css class to the element, but Sometimes we might want to have pre-defined css classes depending on the state of Animation.
+
+Turns out, the package we're using have a component for just that! It's imported from `"react-transition-group/CSSTransition"`
+
+CSSTransition does not use any function in-between the tags, Instead we just write the JSX code, you want to output.
+
+**Important:**
+CSSTransition requires a prop called `classNames`, yes `classNames` and not ~className~.
+
+**What does it do?**  
+Whatever className we have on the wrapped element, It will keep em and merge the conditional classNames into the existing ones.
+
+**The new classes**  
+We can define the trunk of these classes on the prop.
+
+Example: `classNames="fade-slide"`
+
+We named it `fade-slide`, we can name it whatever we want, Now what it will do is-  
+The CSSTransition component will automatically cycle through a couple of css-classes  and merge them to the className of wrapped element. 
+
+The Classes it cycles through are `your-trunk-<state>`.
+
+In our case, It will cycle through -
+
+- `fade-slide-enter` attached at right at the point of start.
+- `fade-slide-enter-active` Which will be kept attached while it is in the entering mode. (Duration of timeout)
+- `-enter` class will be removed right after one frame.
+- `fade-slide-exit` will be attached when we start exiting.
+- `fade-slide-exit-active` it will be attached while exiting.
+
+So now, all we have to do is to write all these classes in the css.
+
+
+```javascript
+import CSSTransition from "react-transition-group/CSSTransition";
+
+const Modal = props => {
+    return (
+        <CSSTransition>
+        mountOnEnter
+        unmountOnExit
+        in={props.show}
+        timeout={animationTimings}
+        classNames="fade-slide">
+
+        <div className="Modal">
+            <h1>Bawwww</h2>
+            <p>That wasn't me barking, promise</p>
+        </div>
+        </CSSTransition>
+    )
+}
+```
+
+```css
+
+.fade-slide-enter-active {
+  animation: openModal 0.4s ease-out forwards;
+}
+
+.fade-slide-exit-active {
+  animation: closeModal 1s ease-out forwards;
+}
+
+@keyframes openModal {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(20%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0%);
+  }
+}
+
+@keyframes closeModal {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(-60px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-90px);
+  }
+}
+
+```
+
+### Customizing CSS classNames
+
+We had a look in CSSTransition component, how it uses a base class-name and it automatically expands this classnames according to the various states of animation such as `-exit` and `-active` and so on.
+
+But sometimes we want to use our defined classNames, so essentially we don't have to define `-enter` `-active` classNames, for that to work...
+
+We need to pass an object to the `classNames`, and in this object we can define the classNames that it will use for various states of aniamtion.
+
+So, this object should have certain properties.
+```javascript
+const modalClass = {
+    enter: '', // nothing
+    enterActive: 'ModalOpen',
+    exit: '',
+    exitActive: 'ModalClosed'
+    /* there are 2 more
+    appear:
+    appearActive: */ 
+}
+```
+
+- `appear` and `appearActive` is used for something which is first time rendered on the dom.
+- Not when rendering it conditionally, but instead when the application loads for the first time. (Hard coded Html)
+- So if the application loads and it's always there (hard coded), `appear` will be used when it's first time mounted on the dom.
+
+Now, we can simply pass such object to the classNames prop in CSSTransition component.
+
+```javascript
+ <CSSTransition>
+        mountOnEnter
+        unmountOnExit
+        in={props.show}
+        timeout={animationTimings}
+        classNames= {
+          enter: '', // nothing
+          enterActive: 'ModalOpen',
+          exit: '',
+          exitActive: 'ModalClosed'
+        }>
+
+        <div className="Modal">
+            // html here
+        </div>
+</CSSTransition>
+```
+
+## Animating Lists
+
+We cannot animate Lists with just CSS or Transition component, for this we have another package exported from `"react-transition-group/TransitionGroup`.
+
+We use this `TransitionGroup` element where we output list or dynamic list, By default it renders a div at it's place, so we can use a `component` property 
+
+- PROPERTY = PROP(S) OK 
+
+So, to render an un-ordered list instead of a div, we have to set prop `component="ul"` on TransitionGroup.
+
+**Using the TransitionGroup:**
+
+TransitionGroup can be used to animate List, but it works only in conjunction with 'Transition' or 'CSSTransition' components. So we will have to wrap our list-items in one of those components.
+
+
+```javascript
+import TransitionGroup from 'react-transition-group/TransitionGroup';
+import CSSTransition from 'react-transition-group/CSSTransition';
+
+const ListItems = props => {
+
+    return (
+        <CSSTransition 
+        key={props.index}
+        classNames="fade"
+        timeout={300}>
+            
+            <li>{props.item}</li>
+        </CSSTransition>
+    )
+}
+
+const List = props => {
+    // Map ListItems to create dynamic list
+     const listItems = state.items.map((item,index) => (
+             <ListItems index={index} item={item}>
+        ));
+
+    return (
+        <TransitionGroup 
+        component="ul"
+        className="List">
+        {listItems}
+        </TransitionGroup>
+    )
+}
+
+
+```
+
+The special thing about `TransitionGroup` is that it is able to handle multiple items, It determies the changes, if it's removed or added, It will then manually set the `in` property in the wrapped `Transition` or `CSSTransition` property so we don't have to do it ourselves. 
+
+
+As we set the css trunk `fade`, Now we can define the css trunks -
+
+```css
+.fade-enter{
+    opacity: 0;
+}
+
+.fade-enter-active{
+    opacity: 1;
+    transition: opacity 0.3s ease-out;
+}
+
+.fade-exit{
+    opacity: 1;
+}
+
+.fade-exit-active{
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+```
+
+## Alternative Packages for React Animations
+
+There are various libraries for animations in React.  
+
+Some popular Alternatives are -  
+
+- **React Motion**
+- **React Move**
+- **React Router Transition**
+ 
 
